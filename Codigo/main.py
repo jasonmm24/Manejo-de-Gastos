@@ -17,9 +17,21 @@ try:
 except ImportError:
     GRAFICOS_OK = False
 
-DIRECTORIO_ACTUAL = os.path.dirname(os.path.abspath(__file__))
-RUTA_BD = os.path.join(DIRECTORIO_ACTUAL, "finanzas_personales.db")
-RUTA_UI = os.path.join(DIRECTORIO_ACTUAL, "interfaz.ui")
+# Determinar las rutas dependiendo de si es un .exe o el script normal
+if getattr(sys, 'frozen', False):
+    # Ejecutándose como un .exe empaquetado
+    DIRECTORIO_DATOS = sys._MEIPASS # Carpeta temporal oculta donde PyInstaller extrae interfaz.ui
+    DIRECTORIO_EXE = os.path.dirname(sys.executable) # Carpeta real donde el usuario puso el .exe
+else:
+    # Ejecutándose como script .py normal
+    DIRECTORIO_DATOS = os.path.dirname(os.path.abspath(__file__))
+    DIRECTORIO_EXE = DIRECTORIO_DATOS
+
+# RUTA_BD: Se guarda junto al .exe para que los registros sean persistentes y no se borren
+RUTA_BD = os.path.join(DIRECTORIO_EXE, "finanzas_personales.db")
+
+# RUTA_UI: Se lee desde los datos empaquetados temporalmente por PyInstaller
+RUTA_UI = os.path.join(DIRECTORIO_DATOS, "interfaz.ui")
 
 class GestorGastosApp(QMainWindow):
     def __init__(self):
