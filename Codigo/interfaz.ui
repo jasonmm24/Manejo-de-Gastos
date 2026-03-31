@@ -6,16 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>950</width>
-    <height>760</height>
+    <width>800</width>
+    <height>650</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Gestor de Finanzas Personales - Open Source</string>
+   <string>Gestor de Finanzas</string>
   </property>
   <property name="styleSheet">
    <string notr="true">
-    /* TEMA OSCURO (por defecto) - preparado para alternar con clase .light */
     QMainWindow, QWidget#centralwidget, QTabWidget::pane {
         background-color: #121212;
         color: #e0e0e0;
@@ -47,19 +46,15 @@
         font-weight: bold;
     }
     QPushButton:hover { background-color: #366cb9; }
+    
     QPushButton#btnGuardar { background-color: #1e8449; font-size: 14px; }
     QPushButton#btnGuardar:hover { background-color: #27ae60; }
-    QPushButton#btnEliminar { background-color: #922b21; }
-    QPushButton#btnEliminar:hover { background-color: #c0392b; }
-    QPushButton#btnEditar { background-color: #b9770e; }
-    QPushButton#btnEditar:hover { background-color: #d68910; }
-    QPushButton#btnLimpiar { background-color: #424949; }
-    QPushButton#btnLimpiar:hover { background-color: #515a5a; }
-    QPushButton#btnCopiar { background-color: #2c3e50; }
-    QPushButton#btnCopiar:hover { background-color: #3e5a6c; }
-    QPushButton#btnActualizarDash { background-color: #2c3e50; }
-    QPushButton#btnActualizarDash:hover { background-color: #3e5a6c; }
-    QPushButton#btnToggleTheme { background-color: #5a5a5a; }
+    
+    QPushButton#btnHoy { 
+        background-color: #444; 
+        padding: 4px 8px; 
+        font-size: 11px;
+    }
     
     QLineEdit, QDateEdit, QComboBox, QDoubleSpinBox, QTextEdit {
         border: 1px solid #444444;
@@ -67,10 +62,6 @@
         padding: 6px;
         background-color: #2b2b2b;
         color: #ffffff;
-        selection-background-color: #4dabf7;
-    }
-    QLineEdit:focus, QComboBox:focus, QDoubleSpinBox:focus, QTextEdit:focus {
-        border: 1px solid #4dabf7;
     }
     
     QTableWidget {
@@ -78,66 +69,46 @@
         alternate-background-color: #262626;
         color: #e0e0e0;
         gridline-color: #333333;
-        selection-background-color: #2c3e50;
         border: 1px solid #333333;
         border-radius: 5px;
     }
     QHeaderView::section {
         background-color: #2b2b2b;
         color: #ffffff;
-        border: 1px solid #333333;
         padding: 8px;
         font-weight: bold;
+        border: 1px solid #333;
     }
     
     QTabBar::tab {
         background-color: #2b2b2b;
-        color: #888888;
-        padding: 12px 28px;
-        border: 1px solid #333333;
+        color: #888;
+        padding: 12px 30px;
+        border: 1px solid #333;
         border-bottom: none;
         border-top-left-radius: 8px;
         border-top-right-radius: 8px;
-        font-size: 14px;
-        font-weight: bold;
     }
     QTabBar::tab:selected {
         background-color: #1e1e1e;
         color: #4dabf7;
     }
-    
-    QFrame#frameIngresos { background-color: #0b3d1f; border-radius: 12px; border: 1px solid #196f3d; }
-    QFrame#frameGastos { background-color: #4a1515; border-radius: 12px; border: 1px solid #922b21; }
-    QFrame#frameCategoriaTop { background-color: #0f304d; border-radius: 12px; border: 1px solid #1a5276; }
-    QFrame#framePresupuesto { background-color: #1e1e2a; border-radius: 12px; border: 1px solid #4dabf7; }
-    
-    QLabel#lblTotalIngresos { color: #2ecc71; }
-    QLabel#lblTotalGastos { color: #e74c3c; }
-    QLabel#lblCategoriaMayor { color: #5dade2; }
-    QLabel#lblSaldo { font-size: 18px; font-weight: bold; }
-    QLabel#lblSaldo[positive="true"] { color: #2ecc71; }
-    QLabel#lblSaldo[positive="false"] { color: #e74c3c; }
-    
+
     QProgressBar {
         border: 1px solid #444;
         border-radius: 5px;
         background-color: #2b2b2b;
         text-align: center;
         color: white;
+        font-weight: bold;
     }
     QProgressBar::chunk {
         background-color: #4dabf7;
         border-radius: 5px;
     }
-    
-    QMenuBar {
-        background-color: #1e1e1e;
-        color: #e0e0e0;
-        border-bottom: 1px solid #333;
-    }
-    QMenuBar::item:selected { background-color: #2b2b2b; }
-    QMenu { background-color: #1e1e1e; color: #e0e0e0; border: 1px solid #333; }
-    QMenu::item:selected { background-color: #2b5797; }
+
+    QFrame#frameIngresos { background-color: #0b3d1f; border-radius: 10px; border: 1px solid #196f3d; }
+    QFrame#frameGastos { background-color: #4a1515; border-radius: 10px; border: 1px solid #922b21; }
    </string>
   </property>
   
@@ -145,257 +116,386 @@
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
      <widget class="QTabWidget" name="tabMain">
-      <property name="currentIndex"><number>0</number></property>
-      <property name="documentMode"><bool>false</bool></property>
-      <property name="tabPosition"><enum>QTabWidget::North</enum></property>
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
       
       <widget class="QWidget" name="tabDashboard">
-       <attribute name="title"><string>🏠 Panel General</string></attribute>
+       <attribute name="title">
+        <string>🏠 Dashboard</string>
+       </attribute>
        <layout class="QVBoxLayout" name="verticalLayoutDash">
         <item>
          <layout class="QHBoxLayout" name="layoutResumen">
           <item>
            <widget class="QFrame" name="frameIngresos">
-            <property name="toolTip"><string>Total de ingresos registrados</string></property>
-            <layout class="QVBoxLayout" name="vlayoutIn">
-             <item><widget class="QLabel" name="iconIn"><property name="text"><string>💰</string></property><property name="alignment"><set>Qt::AlignCenter</set></property><property name="font"><font><pointsize>24</pointsize></font></property></widget></item>
-             <item><widget class="QLabel" name="lblTotalIngresos"><property name="text"><string>Ingresos: $0.00</string></property><property name="alignment"><set>Qt::AlignCenter</set></property><property name="font"><font><pointsize>13</pointsize><bold>true</bold></font></property></widget></item>
+            <layout class="QVBoxLayout">
+             <item>
+              <widget class="QLabel" name="lblTotalIngresos">
+               <property name="font">
+                <font><pointsize>13</pointsize><bold>true</bold></font>
+               </property>
+               <property name="text">
+                <string>Ingresos: $0.00</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
             </layout>
            </widget>
           </item>
           <item>
            <widget class="QFrame" name="frameGastos">
-            <property name="toolTip"><string>Total de gastos registrados</string></property>
-            <layout class="QVBoxLayout" name="vlayoutGa">
-             <item><widget class="QLabel" name="iconGa"><property name="text"><string>💸</string></property><property name="alignment"><set>Qt::AlignCenter</set></property><property name="font"><font><pointsize>24</pointsize></font></property></widget></item>
-             <item><widget class="QLabel" name="lblTotalGastos"><property name="text"><string>Gastos: $0.00</string></property><property name="alignment"><set>Qt::AlignCenter</set></property><property name="font"><font><pointsize>13</pointsize><bold>true</bold></font></property></widget></item>
-            </layout>
-           </widget>
-          </item>
-          <item>
-           <widget class="QFrame" name="frameCategoriaTop">
-            <property name="toolTip"><string>Categoría con mayor gasto acumulado</string></property>
-            <layout class="QVBoxLayout" name="vlayoutCat">
-             <item><widget class="QLabel" name="iconCat"><property name="text"><string>📊</string></property><property name="alignment"><set>Qt::AlignCenter</set></property><property name="font"><font><pointsize>24</pointsize></font></property></widget></item>
-             <item><widget class="QLabel" name="lblCategoriaMayor"><property name="text"><string>Mayor gasto: --</string></property><property name="alignment"><set>Qt::AlignCenter</set></property><property name="font"><font><pointsize>12</pointsize><bold>true</bold></font></property></widget></item>
+            <layout class="QVBoxLayout">
+             <item>
+              <widget class="QLabel" name="lblTotalGastos">
+               <property name="font">
+                <font><pointsize>13</pointsize><bold>true</bold></font>
+               </property>
+               <property name="text">
+                <string>Gastos: $0.00</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
             </layout>
            </widget>
           </item>
          </layout>
         </item>
-        
+
         <item>
-         <widget class="QFrame" name="framePresupuesto">
-          <layout class="QFormLayout" name="formPresupuesto">
-           <property name="labelAlignment"><set>Qt::AlignRight</set></property>
+         <widget class="QGroupBox" name="groupPresupuesto">
+          <property name="title">
+           <string>📊 Control de Presupuesto Mensual</string>
+          </property>
+          <layout class="QFormLayout" name="formLayoutPresupuesto">
            <item row="0" column="0">
-            <widget class="QLabel" name="labelPresupuestoTotal">
-             <property name="text"><string>📅 Límite mensual:</string></property>
-             <property name="toolTip"><string>Define un presupuesto máximo para el mes actual</string></property>
+            <widget class="QLabel" name="lblPres">
+             <property name="text">
+              <string>Límite Mensual:</string>
+             </property>
             </widget>
            </item>
            <item row="0" column="1">
             <widget class="QDoubleSpinBox" name="spinPresupuestoTotal">
-             <property name="prefix"><string>$ </string></property>
-             <property name="maximum"><double>999999.99</double></property>
-             <property name="buttonSymbols"><enum>QAbstractSpinBox::UpDownArrows</enum></property>
+             <property name="maximum">
+              <double>999999.99</double>
+             </property>
             </widget>
            </item>
            <item row="1" column="0">
-            <widget class="QLabel" name="labelGastadoMes">
-             <property name="text"><string>💸 Gastado este mes:</string></property>
+            <widget class="QLabel" name="lblConsumo">
+             <property name="text">
+              <string>Consumo:</string>
+             </property>
             </widget>
            </item>
            <item row="1" column="1">
             <widget class="QProgressBar" name="progressPresupuesto">
-             <property name="value"><number>0</number></property>
-             <property name="format"><string>%p% ($%v de $%m)</string></property>
+             <property name="value">
+              <number>0</number>
+             </property>
             </widget>
            </item>
           </layout>
          </widget>
         </item>
-        
+
         <item>
-         <widget class="QLabel" name="labelPlaceholderGrafico">
-          <property name="text"><string>📈 [Gráfico de gastos por categoría]</string></property>
-          <property name="alignment"><set>Qt::AlignCenter</set></property>
-          <property name="styleSheet"><string notr="true">border: 1px dashed #555; background-color: #1a1a1a; margin-top: 10px; border-radius: 10px;</string></property>
-          <property name="minimumHeight"><number>260</number></property>
-          <property name="toolTip"><string>Aquí se mostrará una gráfica circular interactiva</string></property>
+         <widget class="QGroupBox" name="groupRecientes">
+          <property name="title">
+           <string>🕒 Últimos 5 Movimientos</string>
+          </property>
+          <layout class="QVBoxLayout">
+           <item>
+            <widget class="QTableWidget" name="tablaRecientes">
+             <property name="maximumHeight">
+              <number>160</number>
+             </property>
+             <property name="editTriggers">
+              <enum>QAbstractItemView::NoEditTriggers</enum>
+             </property>
+             <property name="columnCount">
+              <number>4</number>
+             </property>
+             <column>
+              <property name="text"><string>Fecha</string></property>
+             </column>
+             <column>
+              <property name="text"><string>Descripción</string></property>
+             </column>
+             <column>
+              <property name="text"><string>Tipo</string></property>
+             </column>
+             <column>
+              <property name="text"><string>Monto</string></property>
+             </column>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </item>
-        
+
         <item>
-         <layout class="QHBoxLayout" name="layoutBotonesDash">
-          <item><spacer name="spacerDashLeft"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property></spacer></item>
-          <item><widget class="QPushButton" name="btnActualizarDash"><property name="text"><string>🔄 Actualizar datos</string></property><property name="toolTip"><string>Refresca los resúmenes y el gráfico</string></property></widget></item>
-          <item><spacer name="spacerDashRight"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property></spacer></item>
+         <widget class="QLabel" name="labelPlaceholderGrafico">
+          <property name="minimumHeight">
+           <number>280</number>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">border: 1px dashed #555; border-radius: 10px;</string>
+          </property>
+          <property name="text">
+           <string>Cargando gráfica dinámica...</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+
+        <item>
+         <layout class="QHBoxLayout">
+          <item>
+           <spacer>
+            <property name="orientation"><enum>Qt::Horizontal</enum></property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnActualizarDash">
+            <property name="text">
+             <string>🔄 Actualizar</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </item>
        </layout>
       </widget>
 
       <widget class="QWidget" name="tabRegistro">
-       <attribute name="title"><string>➕ Registrar Movimiento</string></attribute>
-       <layout class="QVBoxLayout" name="verticalLayoutReg">
-        <item><spacer name="spacerRegTop"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>30</height></size></property></spacer></item>
+       <attribute name="title">
+        <string>➕ Registrar</string>
+       </attribute>
+       <layout class="QVBoxLayout">
         <item>
          <widget class="QGroupBox" name="groupNuevo">
-          <property name="title"><string>✏️ Complete los detalles</string></property>
-          <property name="maximumWidth"><number>800</number></property>
-          <property name="alignment"><set>Qt::AlignCenter</set></property>
+          <property name="title">
+           <string>Detalles del Movimiento</string>
+          </property>
           <layout class="QGridLayout" name="gridLayoutNuevo">
-           <property name="horizontalSpacing"><number>20</number></property>
-           <property name="verticalSpacing"><number>15</number></property>
+           <property name="verticalSpacing">
+            <number>15</number>
+           </property>
            
-           <item row="0" column="0"><widget class="QLabel" name="labelFecha"><property name="text"><string>📅 Fecha:</string></property></widget></item>
-           <item row="0" column="1"><widget class="QDateEdit" name="dateFecha"><property name="calendarPopup"><bool>true</bool></property><property name="toolTip"><string>Selecciona la fecha del movimiento</string></property></widget></item>
-           
-           <item row="0" column="2"><widget class="QLabel" name="labelCat"><property name="text"><string>📂 Categoría:</string></property></widget></item>
-           <item row="0" column="3">
-            <widget class="QComboBox" name="comboCategoria">
-             <property name="toolTip"><string>Selecciona una categoría predefinida</string></property>
-             <item><property name="text"><string>Alimentación</string></property></item>
-             <item><property name="text"><string>Transporte</string></property></item>
-             <item><property name="text"><string>Vivienda / Servicios</string></property></item>
-             <item><property name="text"><string>Salud</string></property></item>
-             <item><property name="text"><string>Ocio / Entretenimiento</string></property></item>
-             <item><property name="text"><string>Salario / Ingresos</string></property></item>
-             <item><property name="text"><string>Otros</string></property></item>
+           <item row="0" column="0">
+            <widget class="QLabel" name="label_f">
+             <property name="text"><string>Fecha:</string></property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <layout class="QHBoxLayout">
+             <item>
+              <widget class="QDateEdit" name="dateFecha">
+               <property name="calendarPopup"><bool>true</bool></property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="btnHoy">
+               <property name="text"><string>Hoy</string></property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+
+           <item row="1" column="0">
+            <widget class="QLabel" name="label_d">
+             <property name="text"><string>Descripción:</string></property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QLineEdit" name="txtOriginal">
+             <property name="objectName">
+              <string>txtDescripcion</string>
+             </property>
+             <property name="placeholderText">
+              <string>Insumos, Sueldo, ...</string>
+             </property>
             </widget>
            </item>
 
-           <item row="1" column="0"><widget class="QLabel" name="labelDesc"><property name="text"><string>📝 Descripción:</string></property></widget></item>
-           <item row="1" column="1" colspan="3">
-            <widget class="QLineEdit" name="txtDescripcion">
-             <property name="placeholderText"><string>Ej. Supermercado, Internet, Salario...</string></property>
-             <property name="toolTip"><string>Escribe una breve descripción</string></property>
+           <item row="2" column="0">
+            <widget class="QLabel" name="label_m">
+             <property name="text"><string>Monto:</string></property>
             </widget>
            </item>
-
-           <item row="2" column="0"><widget class="QLabel" name="labelMonto"><property name="text"><string>💰 Monto:</string></property></widget></item>
            <item row="2" column="1">
             <widget class="QDoubleSpinBox" name="spinMonto">
-             <property name="buttonSymbols"><enum>QAbstractSpinBox::UpDownArrows</enum></property>
-             <property name="maximum"><double>999999.99</double></property>
-             <property name="prefix"><string></string></property>
-             <property name="toolTip"><string>Ingresa el valor numérico (punto decimal)</string></property>
+             <property name="maximum">
+              <double>999999.99</double>
+             </property>
             </widget>
            </item>
-           
-           <item row="2" column="2"><widget class="QLabel" name="labelTipo"><property name="text"><string>🔄 Tipo:</string></property></widget></item>
-           <item row="2" column="3">
+
+           <item row="3" column="0">
+            <widget class="QLabel" name="label_t">
+             <property name="text"><string>Tipo:</string></property>
+            </widget>
+           </item>
+           <item row="3" column="1">
             <widget class="QComboBox" name="comboTipo">
-             <property name="toolTip"><string>¿Es un ingreso o un gasto?</string></property>
              <item><property name="text"><string>Gasto (-)</string></property></item>
              <item><property name="text"><string>Ingreso (+)</string></property></item>
             </widget>
            </item>
 
-           <item row="3" column="0"><widget class="QLabel" name="labelMoneda"><property name="text"><string>💱 Moneda:</string></property></widget></item>
-           <item row="3" column="1">
+           <item row="4" column="0">
+            <widget class="QLabel" name="label_mon">
+             <property name="text"><string>Moneda:</string></property>
+            </widget>
+           </item>
+           <item row="4" column="1">
             <widget class="QComboBox" name="comboMoneda">
-             <property name="toolTip"><string>Selecciona la moneda del movimiento</string></property>
              <item><property name="text"><string>$ (MXN)</string></property></item>
              <item><property name="text"><string>$ (USD)</string></property></item>
              <item><property name="text"><string>€ (EUR)</string></property></item>
             </widget>
            </item>
-           <item row="3" column="2" colspan="2">
-            <widget class="QLabel" name="labelInfoMoneda">
-             <property name="text"><string>⚠️ Los saldos se mostrarán en la moneda seleccionada</string></property>
-             <property name="styleSheet"><string>color: #aaaaaa; font-size: 9pt;</string></property>
+
+           <item row="5" column="0">
+            <widget class="QLabel" name="label_c">
+             <property name="text"><string>Categoría:</string></property>
+            </widget>
+           </item>
+           <item row="5" column="1">
+            <widget class="QComboBox" name="comboCategoria">
+             <item><property name="text"><string>Alimentación</string></property></item>
+             <item><property name="text"><string>Transporte</string></property></item>
+             <item><property name="text"><string>Insumos</string></property></item>
+             <item><property name="text"><string>Servicios</string></property></item>
+             <item><property name="text"><string>Otros</string></property></item>
             </widget>
            </item>
 
-           <item row="4" column="0"><widget class="QLabel" name="labelNotas"><property name="text"><string>📌 Notas:</string></property></widget></item>
-           <item row="4" column="1" colspan="3">
-            <widget class="QTextEdit" name="txtNotas">
-             <property name="maximumHeight"><number>80</number></property>
-             <property name="placeholderText"><string>Detalles adicionales (opcional)</string></property>
-             <property name="toolTip"><string>Campo opcional para información extra</string></property>
+           <item row="6" column="0">
+            <widget class="QLabel" name="label_n">
+             <property name="text"><string>Notas:</string></property>
             </widget>
            </item>
-           
-           <item row="5" column="1" colspan="3">
-            <layout class="QHBoxLayout" name="layoutBotonesForm">
-             <item><spacer name="spacerBtn"><property name="orientation"><enum>Qt::Horizontal</enum></property></spacer></item>
-             <item><widget class="QPushButton" name="btnLimpiar"><property name="text"><string>🧹 Limpiar</string></property><property name="toolTip"><string>Vacía todos los campos del formulario</string></property></widget></item>
-             <item><widget class="QPushButton" name="btnGuardar"><property name="text"><string>💾 Guardar Movimiento</string></property><property name="minimumHeight"><number>42</number></property><property name="toolTip"><string>Guarda el movimiento (Ctrl+G)</string></property></widget></item>
+           <item row="6" column="1">
+            <widget class="QTextEdit" name="txtNotas">
+             <property name="maximumHeight"><number>80</number></property>
+            </widget>
+           </item>
+
+           <item row="7" column="1">
+            <layout class="QHBoxLayout">
+             <item><spacer><property name="orientation"><enum>Qt::Horizontal</enum></property></spacer></item>
+             <item>
+              <widget class="QPushButton" name="btnLimpiar">
+               <property name="text"><string>🧹 Limpiar</string></property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="btnGuardar">
+               <property name="text"><string>💾 Guardar</string></property>
+               <property name="minimumHeight"><number>40</number></property>
+              </widget>
+             </item>
             </layout>
            </item>
           </layout>
          </widget>
         </item>
-        <item><spacer name="spacerRegBot"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>30</height></size></property></spacer></item>
+        <item><spacer><property name="orientation"><enum>Qt::Vertical</enum></property></spacer></item>
        </layout>
       </widget>
 
       <widget class="QWidget" name="tabHistorial">
-       <attribute name="title"><string>📋 Historial de Movimientos</string></attribute>
-       <layout class="QVBoxLayout" name="verticalLayoutHist">
-        
+       <attribute name="title">
+        <string>📋 Historial</string>
+       </attribute>
+       <layout class="QVBoxLayout">
         <item>
          <widget class="QGroupBox" name="groupFiltros">
-          <property name="title"><string>🔍 Filtros y búsqueda</string></property>
           <layout class="QHBoxLayout" name="layoutFiltros">
-           <property name="spacing"><number>10</number></property>
-           <item><widget class="QLineEdit" name="txtBuscar"><property name="placeholderText"><string>🔎 Buscar por descripción...</string></property><property name="toolTip"><string>Filtra en tiempo real por texto</string></property></widget></item>
-           <item><widget class="QLabel" name="labelFiltroCat"><property name="text"><string>Mostrar:</string></property></widget></item>
-           <item><widget class="QComboBox" name="comboFiltro">
-             <item><property name="text"><string>Todos</string></property></item>
+           <item>
+            <widget class="QLineEdit" name="txtBuscar">
+             <property name="placeholderText"><string>🔎 Buscar...</string></property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="comboFiltroMoneda">
+             <item><property name="text"><string>Todas las monedas</string></property></item>
+             <item><property name="text"><string>MXN</string></property></item>
+             <item><property name="text"><string>USD</string></property></item>
+             <item><property name="text"><string>EUR</string></property></item>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="comboFiltro">
+             <item><property name="text"><string>Todos los tipos</string></property></item>
              <item><property name="text"><string>Solo Ingresos</string></property></item>
              <item><property name="text"><string>Solo Gastos</string></property></item>
             </widget>
            </item>
-           <item><widget class="QLabel" name="labelFiltroCategoria"><property name="text"><string>Categoría:</string></property></widget></item>
-           <item><widget class="QComboBox" name="comboFiltroCategoria">
-             <item><property name="text"><string>Todas</string></property></item>
-             <item><property name="text"><string>Alimentación</string></property></item>
-             <item><property name="text"><string>Transporte</string></property></item>
-             <item><property name="text"><string>Vivienda / Servicios</string></property></item>
-             <item><property name="text"><string>Salud</string></property></item>
-             <item><property name="text"><string>Ocio / Entretenimiento</string></property></item>
-             <item><property name="text"><string>Salario / Ingresos</string></property></item>
-             <item><property name="text"><string>Otros</string></property></item>
+           <item>
+            <widget class="QPushButton" name="btnLimpiarFiltros">
+             <property name="text"><string>🔄 Reset</string></property>
             </widget>
            </item>
-           <item><widget class="QLabel" name="labelDesde"><property name="text"><string>Desde:</string></property></widget></item>
-           <item><widget class="QDateEdit" name="dateDesde"><property name="calendarPopup"><bool>true</bool></property><property name="toolTip"><string>Fecha inicial del rango</string></property></widget></item>
-           <item><widget class="QLabel" name="labelHasta"><property name="text"><string>Hasta:</string></property></widget></item>
-           <item><widget class="QDateEdit" name="dateHasta"><property name="calendarPopup"><bool>true</bool></property><property name="toolTip"><string>Fecha final del rango</string></property></widget></item>
           </layout>
          </widget>
         </item>
 
         <item>
          <widget class="QTableWidget" name="tablaMovimientos">
-          <property name="selectionBehavior"><enum>QAbstractItemView::SelectRows</enum></property>
-          <property name="editTriggers"><enum>QAbstractItemView::NoEditTriggers</enum></property>
-          <property name="alternatingRowColors"><bool>true</bool></property>
-          <property name="columnCount"><number>7</number></property>
+          <property name="selectionBehavior">
+           <enum>QAbstractItemView::SelectRows</enum>
+          </property>
+          <property name="editTriggers">
+           <enum>QAbstractItemView::NoEditTriggers</enum>
+          </property>
+          <property name="alternatingRowColors">
+           <bool>true</bool>
+          </property>
+          <property name="columnCount">
+           <number>8</number>
+          </property>
           <column><property name="text"><string>ID</string></property></column>
           <column><property name="text"><string>Fecha</string></property></column>
           <column><property name="text"><string>Descripción</string></property></column>
           <column><property name="text"><string>Categoría</string></property></column>
           <column><property name="text"><string>Tipo</string></property></column>
           <column><property name="text"><string>Monto</string></property></column>
+          <column><property name="text"><string>Moneda</string></property></column>
           <column><property name="text"><string>Notas</string></property></column>
          </widget>
         </item>
 
         <item>
          <layout class="QHBoxLayout" name="layoutBotonesTabla">
-          <item><widget class="QPushButton" name="btnEliminar"><property name="text"><string>❌ Eliminar</string></property><property name="toolTip"><string>Elimina el movimiento seleccionado (con confirmación)</string></property></widget></item>
-          <item><widget class="QPushButton" name="btnEditar"><property name="text"><string>✏️ Editar</string></property><property name="toolTip"><string>Edita el movimiento seleccionado</string></property></widget></item>
-          <item><widget class="QPushButton" name="btnCopiar"><property name="text"><string>📋 Copiar</string></property><property name="toolTip"><string>Crea un nuevo movimiento con los mismos datos</string></property></widget></item>
-          <item><widget class="QPushButton" name="btnExportarCSV"><property name="text"><string>📥 Exportar CSV</string></property><property name="toolTip"><string>Exporta los movimientos filtrados a CSV</string></property></widget></item>
-          <item><spacer name="spacerBotonesTabla"><property name="orientation"><enum>Qt::Horizontal</enum></property></spacer></item>
-          <item><widget class="QLabel" name="lblSaldo"><property name="text"><string>💰 Saldo Total: $0.00</string></property><property name="toolTip"><string>Saldo calculado: Ingresos - Gastos</string></property></widget></item>
+          <item><widget class="QPushButton" name="btnEliminar"><property name="text"><string>❌ Eliminar</string></property></widget></item>
+          <item><widget class="QPushButton" name="btnEditar"><property name="text"><string>✏️ Editar</string></property></widget></item>
+          <item><widget class="QPushButton" name="btnCopiar"><property name="text"><string>📋 Copiar</string></property></widget></item>
+          <item><widget class="QPushButton" name="btnExportarCSV"><property name="text"><string>📥 CSV</string></property></widget></item>
+          <item><spacer><property name="orientation"><enum>Qt::Horizontal</enum></property></spacer></item>
+          <item>
+           <widget class="QLabel" name="lblSaldo">
+            <property name="font">
+             <font><pointsize>15</pointsize><bold>true</bold></font>
+            </property>
+            <property name="text">
+             <string>Saldo: $0.00</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </item>
-
        </layout>
       </widget>
      </widget>
@@ -404,44 +504,18 @@
   </widget>
 
   <widget class="QMenuBar" name="menubar">
-   <property name="styleSheet"><string notr="true">background-color: #1e1e1e; color: #e0e0e0;</string></property>
    <widget class="QMenu" name="menuArchivo">
     <property name="title"><string>Archivo</string></property>
-    <addaction name="actionImportar"/>
-    <addaction name="actionExportarTodo"/>
+    <addaction name="actionImportarCSV"/>
     <addaction name="separator"/>
     <addaction name="actionSalir"/>
    </widget>
-   <widget class="QMenu" name="menuConfiguracion">
-    <property name="title"><string>Configuración</string></property>
-    <addaction name="actionTemaOscuro"/>
-    <addaction name="actionTemaClaro"/>
-   </widget>
-   <widget class="QMenu" name="menuAyuda">
-    <property name="title"><string>Ayuda</string></property>
-    <addaction name="actionAcercaDe"/>
-   </widget>
   </widget>
-  <action name="actionImportar"><property name="text"><string>Importar desde CSV...</string></property></action>
-  <action name="actionExportarTodo"><property name="text"><string>Exportar todos los movimientos...</string></property></action>
-  <action name="actionSalir"><property name="text"><string>Salir</string></property></action>
-  <action name="actionTemaOscuro"><property name="text"><string>Modo oscuro</string></property></action>
-  <action name="actionTemaClaro"><property name="text"><string>Modo claro</string></property></action>
-  <action name="actionAcercaDe"><property name="text"><string>Acerca de...</string></property></action>
+  <widget class="QStatusBar" name="statusbar"/>
 
-  <widget class="QStatusBar" name="statusbar">
-   <property name="styleSheet"><string notr="true">color: #aaaaaa; font-size: 10pt; background-color: #1e1e1e;</string></property>
-   <property name="sizeGripEnabled"><bool>false</bool></property>
-   <widget class="QPushButton" name="btnToggleTheme">
-    <property name="text"><string>🌙 Tema</string></property>
-    <property name="flat"><bool>true</bool></property>
-    <property name="toolTip"><string>Cambiar entre tema oscuro y claro</string></property>
-    <property name="cursor"><cursorShape>PointingHandCursor</cursorShape></property>
-   </widget>
-   <property name="statusTips">
-    <string>Listo</string>
-   </property>
-  </widget>
+  <action name="actionImportarCSV"><property name="text"><string>Importar desde CSV...</string></property></action>
+  <action name="actionSalir"><property name="text"><string>Salir</string></property></action>
+
  </widget>
  <resources/>
  <connections/>

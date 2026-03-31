@@ -3,12 +3,12 @@ import os
 import sqlite3
 import csv
 from datetime import datetime
+
 from PySide6.QtWidgets import (QApplication, QMainWindow, QTableWidgetItem, 
                                QMessageBox, QFileDialog, QVBoxLayout, QPushButton)
 from PySide6.QtCore import QDate, Qt, QFile, QMarginsF
-from PySide6.QtGui import QColor, QTextDocument, QPdfWriter, QPageSize, QPageLayout
+from PySide6.QtGui import QColor, QTextDocument, QPdfWriter, QPageSize, QPageLayout, QPainter, QShortcut, QKeySequence
 
-# Carga directa del XML
 from PySide6.QtUiTools import QUiLoader
 
 try:
@@ -25,413 +25,308 @@ class GestorGastosApp(QMainWindow):
     def __init__(self):
         super().__init__()
         
+
         loader = QUiLoader()
         archivo_ui = QFile(RUTA_UI)
-        archivo_ui.open(QFile.ReadOnly)
+        if not archivo_ui.open(QFile.ReadOnly):
+            print(f"Error: No se encontró el archivo {RUTA_UI}")
+            sys.exit(1)
+        
+
         self.ui = loader.load(archivo_ui, self)
         archivo_ui.close()
-        
+
         self.setCentralWidget(self.ui.centralwidget)
-        self.setMenuBar(self.ui.menubar)
-        self.setStatusBar(self.ui.statusbar)
-        self.resize(950, 760)
-        self.setWindowTitle("Gestor de Finanzas Personales - Open Source")
+        if hasattr(self.ui, 'menubar'): self.setMenuBar(self.ui.menubar)
+        if hasattr(self.ui, 'statusbar'): self.setStatusBar(self.ui.statusbar)
         
-        self.ui.tablaMovimientos.setColumnHidden(0, True) 
-        self.ui.tablaMovimientos.setColumnWidth(1, 100) 
-        self.ui.tablaMovimientos.setColumnWidth(2, 180) 
-        self.ui.tablaMovimientos.setColumnWidth(3, 130) 
-        self.ui.tablaMovimientos.setColumnWidth(4, 90)  
-        self.ui.tablaMovimientos.setColumnWidth(5, 100) 
-        self.ui.tablaMovimientos.horizontalHeader().setStretchLastSection(True)
-        
+        self.setWindowTitle("Gestor de Gastos")
+        self.resize(800, 650)
+
+        self.id_edicion = None  
         self.tema_oscuro = True
         
-        # --- NUEVO: Inyectamos el botón de PDF dinámicamente ---
+
         self.btnExportarPDF = QPushButton("📄 Exportar PDF")
         self.btnExportarPDF.setStyleSheet("""
             QPushButton { background-color: #8e44ad; color: white; border-radius: 5px; padding: 8px 16px; font-weight: bold; }
             QPushButton:hover { background-color: #9b59b6; }
         """)
         self.ui.layoutBotonesTabla.insertWidget(4, self.btnExportarPDF)
-        self.btnExportarPDF.clicked.connect(self.exportar_pdf)
-        # --------------------------------------------------------
-        
+
         if GRAFICOS_OK:
             self.chart_view = QChartView()
+            self.chart_view.setRenderHint(QPainter.Antialiasing)
             indice = self.ui.verticalLayoutDash.indexOf(self.ui.labelPlaceholderGrafico)
             self.ui.verticalLayoutDash.insertWidget(indice, self.chart_view)
             self.ui.labelPlaceholderGrafico.hide()
 
-        fecha_hoy = QDate.currentDate()
-        self.ui.dateFecha.setDate(fecha_hoy)
-        self.ui.dateDesde.setDate(fecha_hoy.addMonths(-1))
-        self.ui.dateHasta.setDate(fecha_hoy)
-
         self.inicializar_bd()
+        self.configurar_tablas()
+        self.configurar_atajos()
+        self.conectar_eventos()
         
-        self.ui.btnGuardar.clicked.connect(self.registrar_movimiento)
-        self.ui.btnLimpiar.clicked.connect(self.limpiar_formulario)
-        self.ui.btnEliminar.clicked.connect(self.eliminar_movimiento)
-        self.ui.btnCopiar.clicked.connect(self.copiar_movimiento)
-        self.ui.btnExportarCSV.clicked.connect(self.exportar_csv)
-        self.ui.txtBuscar.textChanged.connect(self.cargar_datos)
-        self.ui.comboFiltro.currentIndexChanged.connect(self.cargar_datos)
-        self.ui.comboFiltroCategoria.currentIndexChanged.connect(self.cargar_datos)
-        self.ui.dateDesde.dateChanged.connect(self.cargar_datos)
-        self.ui.dateHasta.dateChanged.connect(self.cargar_datos)
-        self.ui.btnActualizarDash.clicked.connect(self.cargar_datos)
-        self.ui.spinPresupuestoTotal.valueChanged.connect(self.actualizar_presupuesto)
-        
-        self.ui.actionSalir.triggered.connect(self.close)
-        self.ui.btnToggleTheme.clicked.connect(self.alternar_tema)
-        
+        self.ui.dateFecha.setDate(QDate.currentDate())
         self.ui.spinPresupuestoTotal.setValue(5000)
-        self.aplicar_tema(True)
+        self.actualizar_prefijo_moneda()
         self.cargar_datos()
 
+    def configurar_tablas(self):
+        self.ui.tablaMovimientos.setColumnHidden(0, True) 
+        self.ui.tablaMovimientos.setColumnWidth(1, 100) 
+        self.ui.tablaMovimientos.setColumnWidth(2, 220) 
+        self.ui.tablaMovimientos.horizontalHeader().setStretchLastSection(True)
+        self.ui.tablaRecientes.horizontalHeader().setStretchLastSection(True)
+
+    def configurar_atajos(self):
+        QShortcut(QKeySequence("Ctrl+G"), self, lambda: (self.ui.tabMain.setCurrentIndex(1), self.ui.txtDescripcion.setFocus()))
+        QShortcut(QKeySequence("Ctrl+E"), self, self.preparar_edicion)
+        QShortcut(QKeySequence("Ctrl+L"), self, self.limpiar_formulario)
+        QShortcut(QKeySequence("Delete"), self.ui.tablaMovimientos, self.eliminar_movimiento)
+
+    def conectar_eventos(self):
+
+        self.ui.btnGuardar.clicked.connect(self.registrar_movimiento)
+        self.ui.btnLimpiar.clicked.connect(self.limpiar_formulario)
+        self.ui.btnHoy.clicked.connect(lambda: self.ui.dateFecha.setDate(QDate.currentDate()))
+        self.ui.comboMoneda.currentTextChanged.connect(self.actualizar_prefijo_moneda)
+
+        self.ui.btnEliminar.clicked.connect(self.eliminar_movimiento)
+        self.ui.btnEditar.clicked.connect(self.preparar_edicion)
+        self.ui.btnCopiar.clicked.connect(self.copiar_movimiento)
+        self.ui.btnExportarCSV.clicked.connect(self.exportar_csv)
+        self.btnExportarPDF.clicked.connect(self.exportar_pdf)
+
+        self.ui.txtBuscar.textChanged.connect(self.cargar_datos)
+        self.ui.comboFiltro.currentIndexChanged.connect(self.cargar_datos)
+        self.ui.comboFiltroMoneda.currentIndexChanged.connect(self.cargar_datos)
+        self.ui.btnLimpiarFiltros.clicked.connect(self.resetear_filtros)
+
+        self.ui.btnActualizarDash.clicked.connect(self.cargar_datos)
+        self.ui.spinPresupuestoTotal.valueChanged.connect(self.actualizar_presupuesto)
+        self.ui.actionImportarCSV.triggered.connect(self.importar_csv)
+        self.ui.actionSalir.triggered.connect(self.close)
+
+    def closeEvent(self, event):
+        reply = QMessageBox.question(self, 'Cerrar', "¿Deseas salir de la aplicación?", 
+                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.Yes: event.accept()
+        else: event.ignore()
+
     def inicializar_bd(self):
-        conexion = sqlite3.connect(RUTA_BD)
-        cursor = conexion.cursor()
+        conexion = sqlite3.connect(RUTA_BD); cursor = conexion.cursor()
         cursor.execute('''CREATE TABLE IF NOT EXISTS movimientos
-                          (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                           fecha TEXT, descripcion TEXT, categoria TEXT, tipo TEXT, monto REAL, moneda TEXT, notas TEXT)''')
-        conexion.commit()
-        conexion.close()
+                          (id INTEGER PRIMARY KEY AUTOINCREMENT, fecha TEXT, descripcion TEXT, 
+                           categoria TEXT, tipo TEXT, monto REAL, moneda TEXT, notas TEXT)''')
+        conexion.commit(); conexion.close()
+
+    def actualizar_prefijo_moneda(self):
+        moneda = self.ui.comboMoneda.currentText()
+        self.ui.spinMonto.setPrefix("€ " if "EUR" in moneda else "$ ")
 
     def registrar_movimiento(self):
-        fecha = self.ui.dateFecha.date().toString("yyyy-MM-dd")
-        descripcion = self.ui.txtDescripcion.text().strip()
-        categoria = self.ui.comboCategoria.currentText()
         monto = self.ui.spinMonto.value()
-        moneda = self.ui.comboMoneda.currentText()
-        notas = self.ui.txtNotas.toPlainText().strip()
-        
-        if not descripcion or monto == 0:
-            QMessageBox.warning(self, "Aviso", "Ingresa una descripción y un monto válido.")
+        desc = self.ui.txtDescripcion.text().strip()
+        if monto <= 0 or not desc:
+            QMessageBox.warning(self, "Aviso", "Monto y descripción son obligatorios.")
             return
 
+        fecha = self.ui.dateFecha.date().toString("yyyy-MM-dd")
+        cat = self.ui.comboCategoria.currentText()
+        moneda = self.ui.comboMoneda.currentText()
+        notas = self.ui.txtNotas.toPlainText().strip()
         tipo = "Ingreso" if "Ingreso" in self.ui.comboTipo.currentText() else "Gasto"
         
         try:
-            conexion = sqlite3.connect(RUTA_BD)
-            cursor = conexion.cursor()
-            cursor.execute('''INSERT INTO movimientos 
-                              (fecha, descripcion, categoria, tipo, monto, moneda, notas) 
-                              VALUES (?, ?, ?, ?, ?, ?, ?)''',
-                           (fecha, descripcion, categoria, tipo, monto, moneda, notas))
-            conexion.commit()
-            conexion.close()
-            self.ui.statusbar.showMessage("✅ Movimiento guardado.", 3000)
-            
+            conexion = sqlite3.connect(RUTA_BD); cursor = conexion.cursor()
+            if self.id_edicion:
+                cursor.execute("""UPDATE movimientos SET fecha=?, descripcion=?, categoria=?, 
+                                  tipo=?, monto=?, moneda=?, notas=? WHERE id=?""",
+                               (fecha, desc, cat, tipo, monto, moneda, notas, self.id_edicion))
+            else:
+                cursor.execute("""INSERT INTO movimientos (fecha, descripcion, categoria, tipo, monto, moneda, notas) 
+                                  VALUES (?, ?, ?, ?, ?, ?, ?)""", (fecha, desc, cat, tipo, monto, moneda, notas))
+            conexion.commit(); conexion.close()
             self.limpiar_formulario()
             self.cargar_datos()
-            self.ui.tabMain.setCurrentIndex(2)
+            self.ui.tabMain.setCurrentIndex(0) 
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Fallo al guardar:\n{str(e)}")
+            QMessageBox.critical(self, "Error", str(e))
+
+    def preparar_edicion(self):
+        fila = self.ui.tablaMovimientos.currentRow()
+        if fila == -1:
+            QMessageBox.information(self, "Aviso", "Selecciona una fila primero.")
+            return
+        self.id_edicion = int(self.ui.tablaMovimientos.item(fila, 0).text())
+        conexion = sqlite3.connect(RUTA_BD); cursor = conexion.cursor()
+        cursor.execute("SELECT * FROM movimientos WHERE id=?", (self.id_edicion,))
+        d = cursor.fetchone(); conexion.close()
+
+        self.ui.dateFecha.setDate(QDate.fromString(d[1], "yyyy-MM-dd"))
+        self.ui.txtDescripcion.setText(d[2])
+        self.ui.comboCategoria.setCurrentText(d[3])
+        self.ui.comboTipo.setCurrentIndex(1 if d[4] == "Ingreso" else 0)
+        self.ui.spinMonto.setValue(d[5])
+        self.ui.comboMoneda.setCurrentText(d[6])
+        self.ui.txtNotas.setText(d[7])
+        
+        self.ui.btnGuardar.setText("🔄 Actualizar")
+        self.ui.btnGuardar.setStyleSheet("background-color: #f39c12; color: white; font-weight: bold;")
+        self.ui.tabMain.setCurrentIndex(1)
+
+    def copiar_movimiento(self):
+        self.preparar_edicion()
+        self.id_edicion = None
+        self.ui.btnGuardar.setText("💾 Guardar Copia")
+        self.ui.btnGuardar.setStyleSheet("background-color: #2b5797; color: white;")
 
     def limpiar_formulario(self):
-        self.ui.dateFecha.setDate(QDate.currentDate())
-        self.ui.txtDescripcion.clear()
-        self.ui.spinMonto.setValue(0.0)
-        self.ui.txtNotas.clear()
-        self.ui.comboTipo.setCurrentIndex(0)
-        self.ui.txtDescripcion.setFocus()
+        self.id_edicion = None
+        self.ui.txtDescripcion.clear(); self.ui.spinMonto.setValue(0.0); self.ui.txtNotas.clear()
+        self.ui.btnGuardar.setText("💾 Guardar")
+        self.ui.btnGuardar.setStyleSheet("background-color: #1e8449; color: white; font-weight: bold;")
 
     def eliminar_movimiento(self):
         fila = self.ui.tablaMovimientos.currentRow()
         if fila == -1: return
-            
-        id_movimiento = self.ui.tablaMovimientos.item(fila, 0).text()
-        if QMessageBox.question(self, "Confirmar", "¿Eliminar este registro?", 
-                                QMessageBox.Yes | QMessageBox.No) == QMessageBox.Yes:
-            conexion = sqlite3.connect(RUTA_BD)
-            cursor = conexion.cursor()
-            cursor.execute("DELETE FROM movimientos WHERE id = ?", (id_movimiento,))
-            conexion.commit()
-            conexion.close()
-            self.cargar_datos()
+        if QMessageBox.question(self, "Eliminar", "¿Borrar registro?", QMessageBox.Yes|QMessageBox.No) == QMessageBox.Yes:
+            id_db = self.ui.tablaMovimientos.item(fila, 0).text()
+            conn = sqlite3.connect(RUTA_BD); cur = conn.cursor()
+            cur.execute("DELETE FROM movimientos WHERE id=?", (id_db,))
+            conn.commit(); conn.close(); self.cargar_datos()
 
-    def copiar_movimiento(self):
-        fila = self.ui.tablaMovimientos.currentRow()
-        if fila == -1: return
-            
-        self.ui.txtDescripcion.setText(self.ui.tablaMovimientos.item(fila, 2).text())
-        self.ui.comboCategoria.setCurrentText(self.ui.tablaMovimientos.item(fila, 3).text())
-        monto_str = self.ui.tablaMovimientos.item(fila, 5).text().split(" ")[0].replace(",", "")
-        self.ui.spinMonto.setValue(float(monto_str))
-        self.ui.comboTipo.setCurrentIndex(1 if "Ingreso" in self.ui.tablaMovimientos.item(fila, 4).text() else 0)
-        self.ui.txtNotas.setText(self.ui.tablaMovimientos.item(fila, 6).text())
-        self.ui.tabMain.setCurrentIndex(1)
+    def resetear_filtros(self):
+        self.ui.txtBuscar.clear(); self.ui.comboFiltro.setCurrentIndex(0); self.ui.comboFiltroMoneda.setCurrentIndex(0); self.cargar_datos()
 
-    def exportar_csv(self):
-        ruta, _ = QFileDialog.getSaveFileName(self, "Guardar CSV", "", "Archivos CSV (*.csv)")
-        if ruta:
-            with open(ruta, mode='w', newline='', encoding='utf-8') as archivo:
-                escritor = csv.writer(archivo)
-                escritor.writerow(['ID', 'Fecha', 'Descripción', 'Categoría', 'Tipo', 'Monto', 'Notas'])
-                for fila in range(self.ui.tablaMovimientos.rowCount()):
-                    datos_fila = [self.ui.tablaMovimientos.item(fila, col).text() for col in range(7)]
-                    escritor.writerow(datos_fila)
-            self.ui.statusbar.showMessage(f"📥 Exportado a {ruta}", 4000)
+    def cargar_datos(self):
+        conexion = sqlite3.connect(RUTA_BD); cursor = conexion.cursor()
+        query = "SELECT id, fecha, descripcion, categoria, tipo, monto, moneda, notas FROM movimientos WHERE 1=1"
+        params = []
+        if self.ui.txtBuscar.text():
+            query += " AND descripcion LIKE ?"; params.append(f"%{self.ui.txtBuscar.text()}%")
+        if "Ingresos" in self.ui.comboFiltro.currentText(): query += " AND tipo='Ingreso'"
+        elif "Gastos" in self.ui.comboFiltro.currentText(): query += " AND tipo='Gasto'"
+        if self.ui.comboFiltroMoneda.currentIndex() > 0:
+            query += " AND moneda LIKE ?"; params.append(f"%{self.ui.comboFiltroMoneda.currentText()}%")
 
-    # --- NUEVO: FUNCIÓN PARA GENERAR PDF ---
-    def exportar_pdf(self):
-        ruta, _ = QFileDialog.getSaveFileName(self, "Guardar PDF", "Reporte_Finanzas.pdf", "Archivos PDF (*.pdf)")
-        if not ruta:
-            return
-            
-        # 1. Construir el esqueleto HTML del reporte
-        html = f"""
-        <html>
-        <head>
-            <style>
-                body {{ font-family: Arial, sans-serif; }}
-                h1 {{ color: #2c3e50; text-align: center; }}
-                table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
-                th, td {{ border: 1px solid #bdc3c7; padding: 8px; text-align: left; }}
-                th {{ background-color: #2980b9; color: white; font-weight: bold; }}
-                .ingreso {{ color: #27ae60; font-weight: bold; }}
-                .gasto {{ color: #c0392b; font-weight: bold; }}
-                .resumen {{ margin-top: 30px; padding: 15px; background-color: #ecf0f1; border-radius: 5px; }}
-            </style>
-        </head>
-        <body>
-            <h1>Reporte de Finanzas Personales</h1>
-            <p><strong>Fecha de emisión:</strong> {datetime.now().strftime("%Y-%m-%d %H:%M")}</p>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Descripción</th>
-                        <th>Categoría</th>
-                        <th>Tipo</th>
-                        <th>Monto</th>
-                    </tr>
-                </thead>
-                <tbody>
-        """
-        
-        # 2. Llenar la tabla con los datos visuales
-        for fila in range(self.ui.tablaMovimientos.rowCount()):
-            fecha = self.ui.tablaMovimientos.item(fila, 1).text()
-            desc = self.ui.tablaMovimientos.item(fila, 2).text()
-            cat = self.ui.tablaMovimientos.item(fila, 3).text()
-            tipo = self.ui.tablaMovimientos.item(fila, 4).text()
-            monto = self.ui.tablaMovimientos.item(fila, 5).text()
-            
-            clase_tipo = "ingreso" if "Ingreso" in tipo else "gasto"
-            
-            html += f"""
-                <tr>
-                    <td>{fecha}</td>
-                    <td>{desc}</td>
-                    <td>{cat}</td>
-                    <td class="{clase_tipo}">{tipo}</td>
-                    <td>{monto}</td>
-                </tr>
-            """
-            
-        # 3. Agregar los saldos finales
-        html += f"""
-                </tbody>
-            </table>
-            <div class="resumen">
-                <h3>Resumen Financiero</h3>
-                <p>{self.ui.lblTotalIngresos.text()}</p>
-                <p>{self.ui.lblTotalGastos.text()}</p>
-                <h2 style="color: #2c3e50;">{self.ui.lblSaldo.text()}</h2>
-            </div>
-        </body>
-        </html>
-        """
+        cursor.execute(query + " ORDER BY fecha DESC", params)
+        registros = cursor.fetchall(); conexion.close()
 
-        # 4. Crear un documento de texto y renderizarlo como PDF
-        documento = QTextDocument()
-        documento.setHtml(html)
+        self.ui.tablaMovimientos.setSortingEnabled(False)
+        self.ui.tablaMovimientos.setRowCount(0)
+        t_in, t_ga, g_cat = 0.0, 0.0, {}
+
+        for data in registros:
+            r = self.ui.tablaMovimientos.rowCount(); self.ui.tablaMovimientos.insertRow(r)
+            es_in = (data[4] == "Ingreso")
+            color = QColor("#2ecc71") if es_in else QColor("#e74c3c")
+            if es_in: t_in += data[5]
+            else: t_ga += data[5]; g_cat[data[3]] = g_cat.get(data[3], 0) + data[5]
+            
+            for i, val in enumerate(data):
+                item = QTableWidgetItem(str(val))
+                item.setToolTip(str(val))
+                if i == 5: 
+                    item.setData(Qt.EditRole, data[5])
+                    item.setForeground(color)
+                    item.setText(f"{data[5]:,.2f} {data[6]}")
+                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.ui.tablaMovimientos.setItem(r, i, item)
+
+        self.ui.tablaMovimientos.setSortingEnabled(True)
+        self.ui.lblSaldo.setText(f"Saldo: ${t_in - t_ga:,.2f}")
+        self.ui.lblSaldo.setStyleSheet(f"color: {'#2ecc71' if (t_in-t_ga)>=0 else '#e74c3c'};")
+        self.ui.lblTotalIngresos.setText(f"Ingresos: ${t_in:,.2f}")
+        self.ui.lblTotalGastos.setText(f"Gastos: ${t_ga:,.2f}")
         
-        impresora_pdf = QPdfWriter(ruta)
-        impresora_pdf.setPageSize(QPageSize.A4)
-        impresora_pdf.setPageMargins(QMarginsF(15, 15, 15, 15), QPageLayout.Millimeter)
-        
-        documento.print_(impresora_pdf)
-        
-        self.ui.statusbar.showMessage(f"📄 Reporte PDF guardado en: {ruta}", 5000)
-        
-        # Abrir automáticamente el PDF (Opcional)
-        try:
-            os.startfile(ruta) # Solo funciona en Windows
-        except:
-            pass
-    # ----------------------------------------
+        self.actualizar_tabla_recientes(registros[:5])
+        self.actualizar_presupuesto()
+        if GRAFICOS_OK: self.actualizar_grafico(g_cat)
+
+    def actualizar_tabla_recientes(self, datos):
+        self.ui.tablaRecientes.setRowCount(0)
+        for d in datos:
+            r = self.ui.tablaRecientes.rowCount(); self.ui.tablaRecientes.insertRow(r)
+            self.ui.tablaRecientes.setItem(r, 0, QTableWidgetItem(d[1]))
+            self.ui.tablaRecientes.setItem(r, 1, QTableWidgetItem(d[2]))
+            self.ui.tablaRecientes.setItem(r, 2, QTableWidgetItem(d[4]))
+            it = QTableWidgetItem(f"{d[5]:,.2f}"); it.setForeground(QColor("#2ecc71") if d[4] == "Ingreso" else QColor("#e74c3c"))
+            self.ui.tablaRecientes.setItem(r, 3, it)
 
     def actualizar_presupuesto(self):
         limite = self.ui.spinPresupuestoTotal.value()
         if limite <= 0: return
-
         self.ui.progressPresupuesto.setMaximum(int(limite))
-        mes_actual = datetime.now().strftime("%Y-%m")
-        
-        conexion = sqlite3.connect(RUTA_BD)
-        cursor = conexion.cursor()
-        cursor.execute("SELECT SUM(monto) FROM movimientos WHERE tipo='Gasto' AND fecha LIKE ?", (f"{mes_actual}%",))
-        gasto_mes = cursor.fetchone()[0] or 0.0
-        conexion.close()
+        mes = datetime.now().strftime("%Y-%m")
+        conn = sqlite3.connect(RUTA_BD); cur = conn.cursor()
+        cur.execute("SELECT SUM(monto) FROM movimientos WHERE tipo='Gasto' AND fecha LIKE ?", (f"{mes}%",))
+        g = cur.fetchone()[0] or 0; conn.close()
+        self.ui.progressPresupuesto.setValue(int(g))
+        color = "#e74c3c" if g > limite else "#4dabf7"
+        self.ui.progressPresupuesto.setStyleSheet(f"QProgressBar::chunk {{ background-color: {color}; }}")
 
-        self.ui.progressPresupuesto.setValue(int(gasto_mes))
-        if gasto_mes > limite:
-            self.ui.progressPresupuesto.setStyleSheet("QProgressBar::chunk { background-color: #e74c3c; }")
-        else:
-            self.ui.progressPresupuesto.setStyleSheet("QProgressBar::chunk { background-color: #4dabf7; }")
+    def importar_csv(self):
+        ruta, _ = QFileDialog.getOpenFileName(self, "Importar", "", "CSV (*.csv)")
+        if ruta:
+            try:
+                with open(ruta, newline='', encoding='utf-8') as f:
+                    lector = csv.reader(f); next(lector)
+                    conn = sqlite3.connect(RUTA_BD); cur = conn.cursor()
+                    for f in lector:
+                        cur.execute("INSERT INTO movimientos (fecha, descripcion, categoria, tipo, monto, moneda, notas) VALUES (?,?,?,?,?,?,?)",
+                                   (f[1], f[2], f[3], f[4], float(f[5]), f[6], f[7]))
+                    conn.commit(); conn.close(); self.cargar_datos()
+                QMessageBox.information(self, "Éxito", "CSV importado.")
+            except Exception as e: QMessageBox.critical(self, "Error", str(e))
 
-    def actualizar_grafico(self, gastos_por_categoria):
-        if not GRAFICOS_OK: return
-        
-        series = QPieSeries()
-        series.setHoleSize(0.35) 
-        
-        for cat, monto in gastos_por_categoria.items():
-            if monto > 0:
-                slice_pie = series.append(cat, monto)
-                slice_pie.setLabelVisible(True)
+    def exportar_csv(self):
+        ruta, _ = QFileDialog.getSaveFileName(self, "Guardar CSV", "", "CSV (*.csv)")
+        if ruta:
+            with open(ruta, 'w', newline='', encoding='utf-8') as f:
+                w = csv.writer(f); w.writerow(['ID', 'Fecha', 'Desc', 'Cat', 'Tipo', 'Monto', 'Moneda', 'Notas'])
+                for r in range(self.ui.tablaMovimientos.rowCount()):
+                    w.writerow([self.ui.tablaMovimientos.item(r, c).text() for c in range(8)])
 
-        chart = QChart()
-        chart.addSeries(series)
-        chart.setTitle("Gastos por Categoría")
-        chart.setAnimationOptions(QChart.SeriesAnimations)
-        
-        if self.tema_oscuro:
-            chart.setTheme(QChart.ChartThemeDark)
-            chart.setBackgroundBrush(QColor("#1a1a1a"))
-            chart.setTitleBrush(QColor("#ffffff"))
-        else:
-            chart.setTheme(QChart.ChartThemeLight)
-            chart.setBackgroundBrush(QColor("#ffffff"))
-            chart.setTitleBrush(QColor("#000000"))
+    def exportar_pdf(self):
+        ruta, _ = QFileDialog.getSaveFileName(self, "Guardar PDF", "Reporte.pdf", "PDF (*.pdf)")
+        if not ruta: return
+        html = f"""
+        <html><head><style>
+            body {{ font-family: sans-serif; margin: 30pt; }}
+            h1 {{ color: #2c3e50; text-align: center; font-size: 28pt; border-bottom: 2pt solid #2980b9; }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 20pt; }}
+            th {{ background-color: #2980b9; color: white; padding: 10pt; font-size: 14pt; }}
+            td {{ border: 1pt solid #ddd; padding: 10pt; font-size: 12pt; }}
+            .ingreso {{ color: #27ae60; font-weight: bold; }} .gasto {{ color: #c0392b; font-weight: bold; }}
+            .resumen {{ background: #f1f2f6; padding: 20pt; margin-top: 30pt; border-radius: 10pt; border-left: 10pt solid #2c3e50; }}
+        </style></head><body>
+            <h1>REPORTE FINANCIERO</h1>
+            <p align='right'>Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+            <table><tr><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Monto</th></tr>
+        """
+        for r in range(self.ui.tablaMovimientos.rowCount()):
+            f, d, t, m = [self.ui.tablaMovimientos.item(r, i).text() for i in [1, 2, 4, 5]]
+            clase = "ingreso" if "Ingreso" in t else "gasto"
+            html += f"<tr><td>{f}</td><td>{d}</td><td class='{clase}'>{t}</td><td align='right'>{m}</td></tr>"
+        html += f"""</table><div class='resumen'>
+                    <p style='font-size:16pt'>{self.ui.lblTotalIngresos.text()}</p>
+                    <p style='font-size:16pt'>{self.ui.lblTotalGastos.text()}</p>
+                    <hr><h1>{self.ui.lblSaldo.text()}</h1></div></body></html>"""
+        doc = QTextDocument(); doc.setHtml(html)
+        writer = QPdfWriter(ruta); writer.setPageSize(QPageSize.A4)
+        writer.setPageMargins(QMarginsF(25, 25, 25, 25), QPageLayout.Millimeter)
+        doc.print_(writer)
+        try: os.startfile(ruta)
+        except: pass
 
+    def actualizar_grafico(self, dict_gastos):
+        series = QPieSeries(); series.setHoleSize(0.4)
+        for cat, monto in dict_gastos.items():
+            if monto > 0: series.append(cat, monto).setLabelVisible(True)
+        chart = QChart(); chart.addSeries(series); chart.setTitle("Distribución de Gastos")
+        chart.setTheme(QChart.ChartThemeDark); chart.setBackgroundBrush(QColor("#1e1e1e")); chart.setTitleBrush(QColor("#ffffff"))
         self.chart_view.setChart(chart)
-
-    def cargar_datos(self):
-        conexion = sqlite3.connect(RUTA_BD)
-        cursor = conexion.cursor()
-        
-        query = "SELECT id, fecha, descripcion, categoria, tipo, monto, moneda, notas FROM movimientos WHERE 1=1"
-        params = []
-        
-        texto_busqueda = self.ui.txtBuscar.text().strip()
-        if texto_busqueda:
-            query += " AND descripcion LIKE ?"
-            params.append(f"%{texto_busqueda}%")
-            
-        tipo_filtro = self.ui.comboFiltro.currentText()
-        if tipo_filtro == "Solo Ingresos":
-            query += " AND tipo = 'Ingreso'"
-        elif tipo_filtro == "Solo Gastos":
-            query += " AND tipo = 'Gasto'"
-            
-        cat_filtro = self.ui.comboFiltroCategoria.currentText()
-        if cat_filtro != "Todas":
-            query += " AND categoria = ?"
-            params.append(cat_filtro)
-            
-        fecha_ini = self.ui.dateDesde.date().toString("yyyy-MM-dd")
-        fecha_fin = self.ui.dateHasta.date().toString("yyyy-MM-dd")
-        query += " AND fecha BETWEEN ? AND ?"
-        params.extend([fecha_ini, fecha_fin])
-        
-        query += " ORDER BY fecha DESC, id DESC"
-        
-        cursor.execute(query, params)
-        registros = cursor.fetchall()
-        conexion.close()
-
-        self.ui.tablaMovimientos.setSortingEnabled(False)
-        self.ui.tablaMovimientos.setRowCount(0)
-        
-        total_ingresos = 0.0
-        total_gastos = 0.0
-        gastos_categoria = {}
-        categoria_mayor = ("--", 0)
-
-        for fila_datos in registros:
-            id_db, fecha, desc, cat, tipo, monto, moneda, notas = fila_datos
-            
-            if tipo == "Ingreso": 
-                total_ingresos += monto
-            else: 
-                total_gastos += monto
-                gastos_categoria[cat] = gastos_categoria.get(cat, 0) + monto
-                if gastos_categoria[cat] > categoria_mayor[1]:
-                    categoria_mayor = (cat, gastos_categoria[cat])
-            
-            row = self.ui.tablaMovimientos.rowCount()
-            self.ui.tablaMovimientos.insertRow(row)
-            self.ui.tablaMovimientos.setItem(row, 0, QTableWidgetItem(str(id_db)))
-            self.ui.tablaMovimientos.setItem(row, 1, QTableWidgetItem(fecha))
-            self.ui.tablaMovimientos.setItem(row, 2, QTableWidgetItem(desc))
-            self.ui.tablaMovimientos.setItem(row, 3, QTableWidgetItem(cat))
-            self.ui.tablaMovimientos.setItem(row, 4, QTableWidgetItem(tipo))
-            
-            item_monto = QTableWidgetItem()
-            item_monto.setData(Qt.EditRole, float(monto))
-            item_monto.setText(f"{monto:,.2f} {moneda}")
-            self.ui.tablaMovimientos.setItem(row, 5, item_monto)
-            self.ui.tablaMovimientos.setItem(row, 6, QTableWidgetItem(notas))
-
-        self.ui.tablaMovimientos.setSortingEnabled(True)
-
-        saldo_total = total_ingresos - total_gastos
-        self.ui.lblTotalIngresos.setText(f"Ingresos: ${total_ingresos:,.2f}")
-        self.ui.lblTotalGastos.setText(f"Gastos: ${total_gastos:,.2f}")
-        self.ui.lblSaldo.setText(f"💰 Saldo Total: ${saldo_total:,.2f}")
-        
-        if saldo_total >= 0:
-            self.ui.lblSaldo.setStyleSheet("color: #2ecc71; font-size: 18px; font-weight: bold;")
-        else:
-            self.ui.lblSaldo.setStyleSheet("color: #e74c3c; font-size: 18px; font-weight: bold;")
-
-        self.ui.lblCategoriaMayor.setText(f"Mayor gasto:\n{categoria_mayor[0]}")
-        
-        self.actualizar_presupuesto()
-        self.actualizar_grafico(gastos_categoria)
-
-    def alternar_tema(self):
-        self.aplicar_tema(not self.tema_oscuro)
-        
-    def aplicar_tema(self, oscuro):
-        self.tema_oscuro = oscuro
-        if oscuro:
-            self.setStyleSheet("""
-                QMainWindow, QWidget#centralwidget, QTabWidget::pane { background-color: #121212; color: #e0e0e0; }
-                QLabel { color: #e0e0e0; }
-                QGroupBox { border: 1px solid #333; background-color: #1e1e1e; color: #fff; border-radius: 8px; margin-top: 12px; padding-top: 10px; font-weight: bold;}
-                QGroupBox::title { color: #4dabf7; subcontrol-origin: margin; left: 15px; padding: 0 10px;}
-                QPushButton { background-color: #2b5797; color: white; border-radius: 5px; padding: 8px 16px; font-weight: bold; }
-                QPushButton:hover { background-color: #366cb9; }
-                QLineEdit, QDateEdit, QComboBox, QDoubleSpinBox, QTextEdit { background-color: #2b2b2b; color: #fff; border: 1px solid #444; border-radius: 5px; padding: 6px;}
-                QTableWidget { background-color: #1e1e1e; alternate-background-color: #262626; color: #e0e0e0; gridline-color: #333; selection-background-color: #2c3e50; }
-                QHeaderView::section { background-color: #2b2b2b; color: #fff; border: 1px solid #333; padding: 8px; }
-                QTabBar::tab { background-color: #2b2b2b; color: #888; padding: 12px 28px; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: bold;}
-                QTabBar::tab:selected { background-color: #1e1e1e; color: #4dabf7; }
-            """)
-            self.ui.btnToggleTheme.setText("🌙 Tema")
-        else:
-            self.setStyleSheet("""
-                QMainWindow, QWidget#centralwidget, QTabWidget::pane { background-color: #f5f6fa; color: #2f3640; }
-                QLabel { color: #2f3640; }
-                QGroupBox { border: 1px solid #dcdde1; background-color: #ffffff; color: #2f3640; border-radius: 8px; margin-top: 12px; padding-top: 10px; font-weight: bold;}
-                QGroupBox::title { color: #0097e6; subcontrol-origin: margin; left: 15px; padding: 0 10px;}
-                QPushButton { background-color: #0097e6; color: white; border-radius: 5px; padding: 8px 16px; font-weight: bold; }
-                QPushButton:hover { background-color: #00a8ff; }
-                QLineEdit, QDateEdit, QComboBox, QDoubleSpinBox, QTextEdit { background-color: #f5f6fa; color: #2f3640; border: 1px solid #dcdde1; border-radius: 5px; padding: 6px;}
-                QTableWidget { background-color: #ffffff; alternate-background-color: #f5f6fa; color: #2f3640; gridline-color: #dcdde1; selection-background-color: #dcdde1; }
-                QHeaderView::section { background-color: #e1e2e6; color: #2f3640; border: 1px solid #dcdde1; padding: 8px; }
-                QTabBar::tab { background-color: #e1e2e6; color: #7f8fa6; padding: 12px 28px; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: bold;}
-                QTabBar::tab:selected { background-color: #ffffff; color: #0097e6; }
-            """)
-            self.ui.btnToggleTheme.setText("☀️ Tema")
-            
-        self.cargar_datos() 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
