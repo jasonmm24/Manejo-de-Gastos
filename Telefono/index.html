@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gestor de Gastos</title>
+    
+    <link rel="manifest" href="./manifest.json">
+    <link rel="stylesheet" href="./static/style.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js" defer></script>
+</head>
+<body>
+
+    <header>
+        <h1>Gestor de Gastos</h1>
+    </header>
+
+    <main>
+        
+        <section id="tab-dashboard" class="tab-content activa">
+            <div class="tarjeta-saldo">
+                <h2>Saldo Total</h2>
+                <h1 id="lblSaldo">$0.00</h1>
+            </div>
+
+            <div class="resumen-rapido">
+                <div class="caja-ingreso">
+                    <small>Ingresos</small>
+                    <div id="lblTotalIngresos">$0.00</div>
+                </div>
+                <div class="caja-gasto">
+                    <small>Gastos</small>
+                    <div id="lblTotalGastos">$0.00</div>
+                </div>
+            </div>
+
+            <div class="tarjeta">
+                <h3>Presupuesto Mensual</h3>
+                <div class="presupuesto-control">
+                    <label>Límite: $</label>
+                    <input type="number" id="spinPresupuestoTotal" value="5000" onchange="actualizarPresupuesto()">
+                </div>
+                <progress id="progressPresupuesto" value="0" max="5000"></progress>
+            </div>
+
+            <div class="tarjeta">
+                <h3>Distribución de Gastos</h3>
+                <canvas id="graficoGastos"></canvas>
+            </div>
+        </section>
+
+        <section id="tab-registro" class="tab-content">
+            <div class="tarjeta">
+                <h2 id="titulo-form">Nuevo Movimiento</h2>
+                
+                <input type="hidden" id="id_edicion" value="">
+
+                <div class="grupo-input">
+                    <label>Fecha</label>
+                    <input type="date" id="dateFecha">
+                </div>
+
+                <div class="grupo-input">
+                    <label>Descripción</label>
+                    <input type="text" id="txtDescripcion" placeholder="Ej. Insumos para el negocio...">
+                </div>
+
+                <div class="fila-inputs">
+                    <div class="grupo-input">
+                        <label>Tipo</label>
+                        <select id="comboTipo">
+                            <option value="Gasto">Gasto</option>
+                            <option value="Ingreso">Ingreso</option>
+                        </select>
+                    </div>
+                    <div class="grupo-input">
+                        <label>Categoría</label>
+                        <select id="comboCategoria">
+                            <option value="General">General</option>
+                            <option value="Alimentación">Alimentación</option>
+                            <option value="Transporte">Transporte</option>
+                            <option value="Negocio">Negocio</option>
+                            <option value="Servicios">Servicios</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="fila-inputs">
+                    <div class="grupo-input">
+                        <label>Monto</label>
+                        <input type="number" id="spinMonto" step="0.01" min="0" placeholder="0.00">
+                    </div>
+                    <div class="grupo-input">
+                        <label>Moneda</label>
+                        <select id="comboMoneda">
+                            <option value="MXN">MXN</option>
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grupo-input">
+                    <label>Notas adicionales</label>
+                    <textarea id="txtNotas" rows="2" placeholder="Opcional..."></textarea>
+                </div>
+
+                <div class="botones-accion">
+                    <button id="btnGuardar" class="btn-primario" onclick="registrarMovimiento()">💾 Guardar</button>
+                    <button id="btnLimpiar" class="btn-secundario" onclick="limpiarFormulario()">🧹 Limpiar</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="tab-movimientos" class="tab-content">
+            
+            <div class="herramientas-datos">
+                <button class="btn-pdf" onclick="exportarPDF()">📄 Exportar PDF</button>
+                <button class="btn-csv" onclick="exportarCSV()">📥 CSV</button>
+                <input type="file" id="fileImportarCSV" accept=".csv" style="display: none;" onchange="importarCSV(event)">
+                <button class="btn-csv" onclick="document.getElementById('fileImportarCSV').click()">📤 Importar CSV</button>
+            </div>
+
+            <div class="tarjeta filtros">
+                <input type="text" id="txtBuscar" placeholder="🔍 Buscar por descripción..." oninput="cargarDatos()">
+                <div class="fila-inputs">
+                    <select id="comboFiltro" onchange="cargarDatos()">
+                        <option value="Todos">Todos los tipos</option>
+                        <option value="Ingreso">Solo Ingresos</option>
+                        <option value="Gasto">Solo Gastos</option>
+                    </select>
+                    <button class="btn-secundario" onclick="resetearFiltros()">Resetear</button>
+                </div>
+            </div>
+
+            <ul id="listaMovimientos" class="lista-movimientos">
+                </ul>
+        </section>
+
+    </main>
+
+    <nav class="barra-navegacion">
+        <button onclick="cambiarPestana('tab-dashboard')" id="nav-dashboard" class="activo">
+            📊<br><span>Inicio</span>
+        </button>
+        <button onclick="cambiarPestana('tab-registro')" id="nav-registro">
+            ➕<br><span>Registro</span>
+        </button>
+        <button onclick="cambiarPestana('tab-movimientos')" id="nav-movimientos">
+            📋<br><span>Lista</span>
+        </button>
+    </nav>
+
+    <script src="./static/app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js');
+        }
+    </script>
+</body>
+</html>
