@@ -48,7 +48,7 @@ El proyecto sigue una arquitectura sencilla y modular para facilitar su mantenim
 ### Para Usuarios (Móvil)
 1. Abre el [enlace de la aplicación](https://jasonmm24.github.io/Manejo-de-Gastos/AppGeneral) desde Chrome o Safari.
 2. En el menú del navegador, selecciona **"Instalar aplicación"** o **"Agregar a la pantalla de inicio"**.
-3. Accede directamente desde tu menú de aplicaciones, incluso sin internet.
+3. Accede directamente desde tu menú de aplicaciones.
 
 ### Para Desarrolladores (Local)
 Si deseas explorar o modificar el código:
