@@ -20,7 +20,6 @@ Esta es una **Progressive Web App (PWA)** enfocada en la gestión de ingresos y 
 
 ## Características Principales
 
-* **Modo Offline Real:** Gracias a su Service Worker integrado, la aplicación carga y funciona perfectamente en modo avión o zonas sin cobertura.
 * **Privacidad y Almacenamiento Local:** Los datos son tuyos. Todo se guarda directamente en la memoria de tu navegador/dispositivo a través de la caché local.
 * **Dashboard Interactivo:** Análisis visual de tus finanzas mediante gráficas dinámicas impulsadas por Chart.js.
 * **Reportes Profesionales:** Exportación de movimientos detallados a formato **PDF** (listos para imprimir) y soporte para archivos **CSV**.
